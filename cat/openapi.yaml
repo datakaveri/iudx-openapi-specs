@@ -433,7 +433,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardErrorResponse'
+                                $ref: '#/components/schemas/notFoundResponse'
                     description: Didn't find the item.
             operationId: getItem
             description: Get an item
@@ -479,19 +479,19 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/responseForValidationFailure'
                     description: Invalid document
                 '401':
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/responseForAuthFailure'
                     description: Unauthorized access
                 '404':
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/notFoundResponse'
                     description: Document doesn't exist
             operationId: updateItem
             description: Update an item where the body contains a fully valid item with id
@@ -537,13 +537,13 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/responseForValidationFailure'
                     description: Invalid document
                 '401':
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/responseForAuthFailure'
                     description: Unauthorized access
             operationId: createItem
             description: Insert an item into the catalogue where the item's body specifies the type of item
@@ -590,13 +590,13 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/responseForAuthFailure'
                     description: Unauthorized access
                 '404':
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/notFoundResponse'
                     description: Didn't find the item
             operationId: deleteItem
             description: Delete an item
@@ -699,12 +699,6 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/standardResponseWithObjects'
                     description: Item oor relationship doesn't exist
-                '401':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardResponseWithObjects'
-                    description: Not authorized
             operationId: getRelatedEntity
             description: Get the related entity
             x-codeSamples:
@@ -770,13 +764,13 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/responseForValidationFailure'
                     description: Invalid document
                 '401':
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
+                                $ref: '#/components/schemas/responseForAuthFailure'
                     description: Unauthorized access
             operationId: createInstance
             description: Create an IUDX instance
@@ -824,7 +818,8 @@ components:
         standardResponseWithObjects:
             title: Root Type for standardResponse
             description: Standard Response for all requests
-            required: []
+            required:
+                - type
             type: object
             properties:
                 totalHits:
@@ -992,6 +987,78 @@ components:
                         id: some-id
                         method: insert/delete/update
                         status: success
+        responseForValidationFailure:
+            title: Root Type for responseForLinkValidationFailure
+            description: A standard response for all link validation failures
+            required:
+                - type
+            type: object
+            properties:
+                type:
+                    description: Type of the error
+                    enum:
+                        - 'urn:iudx:cat:WrongProvider'
+                        - 'urn:iudx:cat:WrongResourceServer'
+                        - 'urn:iudx:cat:WrongResourceGroup'
+                        - 'urn:iudx:cat:InvalidSchema'
+                        - 'urn:iudx:cat:AlreadyExists'
+                    type: string
+                title:
+                    description: Title of the status. Usually a http status code title.
+                    type: string
+                detail:
+                    description: Detailed explanation of the status code for the response if any.
+                    type: string
+            example:
+                totalHits: 0
+                results:
+                    - {}
+                type: 'urn:iudx:cat:WrongProvider'
+                title: Bad Request
+                detail: '''provider'' mentioned in the document is not appicable for given token or given link'
+        responseForAuthFailure:
+            title: Root Type for responseForAuthFailure
+            description: A standard response for all authorization related failures.
+            type: object
+            properties:
+                type:
+                    description: Title of the status. Usually a http status code title.
+                    type: string
+                title:
+                    description: Title of the status. Usually a http status code title.
+                    type: string
+                detail:
+                    description: Detailed explanation of the status code for the response if any.
+                    type: string
+            example:
+                type: 'urn:iudx:cat:TokenExpired'
+                title: Unauthorized
+                detail: Token used has expired
+        notFoundResponse:
+            title: Root Type for notFoundResponse
+            description: Response for item not found
+            type: object
+            properties:
+                totalHits:
+                    format: int32
+                    type: integer
+                results:
+                    type: array
+                    items:
+                        type: object
+                type:
+                    type: string
+                title:
+                    type: string
+                detail:
+                    type: string
+            example:
+                totalHits: 0
+                results:
+                    - {}
+                type: 'urn:iudx:cat:ItemNotFound'
+                title: Not Found
+                detail: Item not found
     responses:
         resp:
             content:
@@ -1031,3 +1098,4 @@ tags:
         description: |
             Catalogue administrator specific apis.
         x-displayName: Administrator
+
