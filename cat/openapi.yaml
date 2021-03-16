@@ -13,6 +13,10 @@ info:
 
         The catalogue is a [JSON-LD](https://json-ld.org/) document stored and based on the
         [RDF](https://www.w3.org/RDF/) information exchange model. 
+servers:
+    -
+        url: 'https://api.catalogue.iudx.org.in/i'
+        description: Catalogue production API Server
 paths:
     /iudx/cat/v1/search:
         get:
@@ -834,7 +838,7 @@ components:
                 type:
                     description: Detailed description of the status
                     enum:
-                        - 'urn:iudx:cat:success'
+                        - 'urn:iudx:cat:Success'
                     type: string
                 title:
                     description: Title of the status. Usually a http status code title.
@@ -842,12 +846,12 @@ components:
                 detail:
                     description: Detailed explanation of the status code for the response if any.
             example:
-                totalHits: 10
+                totalHits: 1
                 results:
                     - {}
                 type: 'urn:iudx:cat:Success'
                 title: success
-                detail: successfully created item
+                detail: successfully executed query
         standardResponseWithStrings:
             title: Root Type for standardResponse
             description: Standard Response for all requests
@@ -876,11 +880,10 @@ components:
                     type: string
             example:
                 totalHits: 10
-                results:
-                    - {}
-                type: 'urn:iudx:cat:MissingToken'
-                title: Unauthorized
-                detail: Missing token
+                results: []
+                type: 'urn:iudx:cat:Success'
+                title: Success
+                detail: Successfully executed the list query
         standardErrorResponse:
             title: Root Type for standardErrorResponse
             description: Stand response body for error status
@@ -970,18 +973,11 @@ components:
                                 type: string
                 type:
                     enum:
-                        - 'urn:iudx:cat:WrongProvider'
-                        - 'urn:iudx:cat:WrongResourceServer'
-                        - 'urn:iudx:cat:WrongResourceGroup'
-                        - 'urn:iudx:cat:InvalidSchema'
-                        - 'urn:iudx:cat:IdNonExistant'
-                        - 'urn:iudx:cat:AlreadyExists'
                         - 'urn:iudx:cat:Success'
-                        - 'urn:iudx:cat:TokenExpired'
-                        - 'urn:iudx:cat:MissingToken'
                     type: string
             example:
-                status: success or fail
+                type: 'urn:iudx:cat:Success'
+                title: success
                 results:
                     -
                         id: some-id
@@ -1059,13 +1055,6 @@ components:
                 type: 'urn:iudx:cat:ItemNotFound'
                 title: Not Found
                 detail: Item not found
-    responses:
-        resp:
-            content:
-                application/json:
-                    schema:
-                        $ref: '#/components/schemas/standardResponseWithObjects'
-            description: ''
 tags:
     -
         name: Entity
