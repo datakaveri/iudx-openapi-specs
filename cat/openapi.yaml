@@ -1,11 +1,11 @@
 openapi: 3.0.2
 info:
-    title: IUDX Catalogue Server APIs
+    title: DX Catalogue Server APIs
     version: 1.0.0
-    description: >
-        The Catalogue is IUDX's dataset discovery portal and metadata store. 
+    description: >+
+        The Catalogue is DX's dataset discovery portal and metadata store.
 
-        It enables *Providers* of datasources to describe them with IUDX based annotations
+        It enables *Providers* of datasources to describe them with DX based annotations
 
         to make discovery and consumption of data both automatable and semantically describable. 
 
@@ -13,6 +13,7 @@ info:
 
         The catalogue is a [JSON-LD](https://json-ld.org/) document stored and based on the
         [RDF](https://www.w3.org/RDF/) information exchange model. 
+
 servers:
     -
         url: 'https://api.catalogue.iudx.org.in/i'
@@ -103,13 +104,6 @@ paths:
                         items:
                             type: string
                     in: query
-                -
-                    name: instance
-                    description: IUDX instance on which this query is to be made.
-                    schema:
-                        type: string
-                    in: header
-                    required: false
             responses:
                 '200':
                     content:
@@ -124,54 +118,96 @@ paths:
                                 $ref: '#/components/schemas/standardErrorResponse'
                     description: Bad query.
             operationId: search
-            description: |
-                Generic catalogue search query. Searches for entites that meet the
-                query criteria. The search enpoint allows one to query a particular property of an
+            description: >
+                This API implements the generic catalogue search. It searches for catalogue entites that meet
+                the
+
+                search query criteria. The search enpoint allows one to query a particular attribute/property
+                of an
+
                 entity, or by its geo-location annotation, or by a full text-search or a combination of
+
                 all three.
+
                 #### Property Search
-                One may combine multiple properties in a search through a logical "&". For each such property
-                multiple possible values may be given. The syntax for a property query is -
-                `property=[<prop-1>,<prop-2>]&value=[[<prop-1-val-1>,<prop-1-val-2>],[<prop-2-val-1>]]`
-                Property search can be applied to any property
-                (including nested through `prop.subprop.subsubprop` syntax wherever applicable).
-                These perform exact matches in the case of keywords such as
-                `id`, `resourceGroup`, `provider`, `resourceServer`, `type`
-                and approximate matches (text based) for all other properties.
+
+                The property search is applicable to properties/attributes that are strings or array of
+                strings. 
+
+                One may combine multiple properties in a search through a logical-AND ("&&"). For each such
+                property
+
+                multiple matching values may be given. Multiple values for a given property are matched via a
+                logical-OR
+
+                ("||") operation. 
+
+                The syntax for a property query is -
+                `property=[<prop-1>,<prop-2>]&value=[[<prop-1-val-1>,<prop-1-val-2>],[<prop-2-val-1>]]`. 
+
+                This search will return entities with the following matching rule: '{<prop-1> ==
+                <prop-1-val-1> || <prop-1> == <prop-1-val-2> } &&  {<prop-2> == <prop-2-val-1> }'.
+
+                For property search only exact string matches are applicable.
+
+                Property search can be applied to any property and may include nested properties through
+                `prop.subprop.subsubprop` syntax, wherever applicable. 
+
+                Note that, an implementation may choose to expose only a limited set of attributes/properties
+                for a given entity for this search, in which case such information should be made available by
+                the respective implementations.
+
+                Typically, this search is used to find entities with required values for properties such as
+
+                `id`, `resourceGroup`, `provider`, `resourceServer`, `type` etc.
+
                 Some common uses are 
-                  - tags: `property=[tags]&value=[["aqm", "pollution"]]`
-                  - by type of entity: `property=[type]&value=[[iudx:ResourceGroup]]`. Valid entities are `iudx:Resource`, `iudx:ResourceGroup`, `iudx:Provider`, `iudx:ResourceServer`.
-                  - resource belonging to a group: `property=[resourceGroup]&value=[[<group-id>]]`
+                  - search discovery tags: `property=[tags]&value=[["aqm", "pollution"]]`
+                  - search by type of entity: `property=[type]&value=[[iudx:ResourceGroup]]`. Valid entities are `iudx:Resource`, `iudx:ResourceGroup`, `iudx:Provider`, `iudx:ResourceServer`.
+                  - search resources belonging to a group: `property=[resourceGroup]&value=[[<group-id>]]`
 
                 #### Geo Search
-                Geo search accepts geojson based queries. The params and their accepted values are -
-                  - geoproperty: Which geoproperty to query. Default is `location`.
-                  - georel: Geo-relationship. One of `within`, `contains`, `disjoint`, `intersects`.
-                  - geometry: GeoJson geometries. One of `Point`(point and circle), `Polygon`, `LineString`(for interseaction with points and polygons), `bbox`.
-                      - Point: Point and radius query
+
+                The Geo search is to search entities using geo-spatial attributes. Geo search accepts queries
+                where input geo-shapes are based on GeoJSON [RFC 7946]. The params and their accepted values
+                are -
+                  - geoproperty: Which geo-property to query. Default is `location`.
+
+                  - geometry: One of the following GeoJSON geometries: `Point`, `Polygon`, `LineString`, `bbox`. It allows to search for entities that satisfy a geo-relationship, specified via georel parameter, with the provided input shape.
+                      - Point: To allow for input query shape of 'circle'. It must always be accompanied with query parameter 'maxDistance'. Together, 'Point' and 'maxDistance' represent the center and radius, respectively, for a circle.
                           - coordinates: The center point of the circle, for e.g, `[73,13]` (lon and lat)
-                          - maxDistance: Radius from the center point in meters, for e.g `100`
-                          - georel: `within`
                       - Polygon: Polygon/Multi-Polygon query
                           - coordinates: Coordinates of the polygon/s, for e.g, `[[[73,13],[73,12],[73,13]]]`.  Note, (lon and lat) and the first coordinate must be same as last.
-                          - georel: `within`
-                      - LineString: Multi line string
+                      - LineString: Linestring query
                           - coordinates: Coordinates of the multi-line, for e.g, `[[73,13],[74,15],[75,16]]`. 
-                          - georel: `intersects`
-                      - bbox: Bounding box
+                      - bbox: Bounding box query
                           - coordinates: `[[top-left],[bottom-right]]`, `[[73,13],[74,12]]`. 
-                          - georel: `within`
-
+                  - maxDistance: This parameters defines radius parameter when the input geo shape is a  circle. Applicable only when the geometry parameter is a 'Point'. maxDistance represents radius from the center point in meters, for e.g `100` 
+                  - georel: Geo-relationship. One of `within`, 'intersects' and `disjoint`.
+                    - 'within': Finds all entities whose point locations are within the close shaped query geometry.
+                    - 'intersects': Finds all the entities whose geo shapes or geo points intersects with the query geometry.
+                    - 'Disjoint': Finds all entities that have point locations or geo shapes falling outside the close shaped query geometry.
+                    Note that in the above geo relationships 'within' and 'disjoint' are not applicable when input shape is 'Linestring'.
+                    
                 #### Text search
-                This is a fuzzy full text based search. It searches across all entity types.
+
+                This is a fuzzy full text based search. It returns entities that contains words that are
+                'similar' to query text pattern. It searches across all entity types.   The set of
+                properties/attributes that are part of text search is implementation dependent. Further, the
+                notions of 'similarity'  or 'in-exactness of match' are also dependent on a given
+                implementation and this information should be made available by the catalogue service
+                implementations.
+
                   - q: Text to be queried
 
                 #### Complex search
-                A combination of the above is allowed to make searches more  complex.
+
+                A combination of the above is allowed to make searches more complex.
+
 
                 #### Limits and filters
                   - Documents returned can be limited by specifying a limit and offset. For e.g, `limit=100&offset=10` gives 100 documents from the 10th search result.
-                  - A subset of properties of returned documents can be filtered out. For e.g, `filter=[id]` returns documents with only the `id` property retained in them.
+                  - A subset of properties of returned documents can be filtered out. For e.g, `filter=[id]` returns documents with only the `id` property retained in the returned documents.
             x-codeSamples:
                 -
                     lang: by type
@@ -189,239 +225,17 @@ paths:
                     lang: complex
                     source: >
                         https://api.catalogue.iudx.org.in/iudx/cat/v1/search?property=[type]&value=[[iudx:Resource]]&geoproperty=location&georel=within&maxDistance=5000&geometry=Point&coordinates=[73.927285,18.502712]
-    /iudx/cat/v1/count:
-        get:
-            tags:
-                - Discovery
-            parameters:
-                -
-                    name: property
-                    description: >-
-                        Array of properties on which query is to be made. The mapping between a property and a
-                        value is one-to-one.
-                    schema:
-                        type: array
-                        items:
-                            type: string
-                    in: query
-                    required: false
-                -
-                    name: value
-                    description: Values of the one-to-one mapped properties.
-                    schema:
-                        type: array
-                        items:
-                            type: string
-                    in: query
-                    required: false
-                -
-                    name: geoproperty
-                    description: Name of the property if the query is on a geospatial property.
-                    schema:
-                        type: string
-                    in: query
-                -
-                    name: georel
-                    description: 'Type of geoquery, for e.g, within, near, outside.'
-                    schema:
-                        type: string
-                    in: query
-                    required: false
-                -
-                    name: geometry
-                    description: 'Geometry of the geo-query, for e.g, linstring, bbox, polygon.'
-                    schema:
-                        type: string
-                    in: query
-                -
-                    name: coordinates
-                    description: >-
-                        Coordinates for the specific query type. For e.g, [[1,2], [3,4]]. Note: The data-type
-                        of this field is a string, therefore the coordinates are a string encoded
-                        multidimensional array.
-                    schema:
-                        type: string
-                    in: query
-                    required: false
-                -
-                    name: q
-                    description: query for text/fuzzy search.
-                    schema:
-                        type: string
-                    in: query
-                    required: false
-                -
-                    name: limit
-                    description: Limit number of records in search response.
-                    schema:
-                        type: integer
-                    in: query
-                    required: false
-                -
-                    name: offset
-                    description: Offset from where the next batch of results should be returned.
-                    schema:
-                        type: integer
-                    in: query
-                    required: false
-                -
-                    name: filter
-                    description: Filter properties to display. This is an array of strings.
-                    schema:
-                        type: array
-                        items:
-                            type: string
-                    in: query
-                -
-                    name: instance
-                    description: IUDX instance on which this query is to be made.
-                    schema:
-                        type: string
-                    in: header
-                    required: false
-            responses:
-                '200':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardResponseWithObjects'
-                    description: All the query parameters yielded results.
-                '400':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardErrorResponse'
-                    description: Bad query.
-            operationId: count
-            description: |
-                Generic catalogue count query. Searches for entites that meet the
-                query criteria. The count enpoint allows one to query a particular property of an
-                entity, or by its geo-location annotation, or by a full text-search or a combination of
-                all three and returns a *count* of the total entities that matches the query criteria.
-                #### Property Search
-                One may combine multiple properties in a search through a logical "&". For each such property
-                multiple possible values may be given. The syntax for a property query is -
-                `property=[<prop-1>,<prop-2>]&value=[[<prop-1-val-1>,<prop-1-val-2>],[<prop-2-val-1>]]`
-                Property search can be applied to any property
-                (including nested through `prop.subprop.subsubprop` syntax wherever applicable).
-                These perform exact matches in the case of keywords such as
-                `id`, `resourceGroup`, `provider`, `resourceServer`, `type`
-                and approximate matches (text based) for all other properties.
-                Some common uses are 
-                  - tags: `property=[tags]&value=[["aqm", "pollution"]]`
-                  - by type of entity: `property=[type]&value=[[iudx:ResourceGroup]]`. Valid entities are `iudx:Resource`, `iudx:ResourceGroup`, `iudx:Provider`, `iudx:ResourceServer`.
-                  - resource belonging to a group: `property=[resourceGroup]&value=[[<group-id>]]`
-
-                #### Geo Search
-                Geo search accepts geojson based queries. The params and their accepted values are -
-                  - geoproperty: Which geoproperty to query. Default is `location`.
-                  - georel: Geo-relationship. One of `within`, `contains`, `disjoint`, `intersects`.
-                  - geometry: GeoJson geometries. One of `Point`(point and circle), `Polygon`, `LineString`(for interseaction with points and polygons), `bbox`.
-                      - Point: Point and radius query
-                          - coordinates: The center point of the circle, for e.g, `[73,13]` (lon and lat)
-                          - maxDistance: Radius from the center point in meters, for e.g `100`
-                          - georel: `within`
-                      - Polygon: Polygon/Multi-Polygon query
-                          - coordinates: Coordinates of the polygon/s, for e.g, `[[[73,13],[73,12],[73,13]]]`.  Note, (lon and lat) and the first coordinate must be same as last.
-                          - georel: `within`
-                      - LineString: Multi line string
-                          - coordinates: Coordinates of the multi-line, for e.g, `[[73,13],[74,15],[75,16]]`. 
-                          - georel: `intersects`
-                      - bbox: Bounding box
-                          - coordinates: `[[top-left],[bottom-right]]`, `[[73,13],[74,12]]`. 
-                          - georel: `within`
-
-                #### Text search
-                This is a fuzzy full text based search. It searches across all entity types.
-                  - q: Text to be queried
-
-                #### Complex search
-                A combination of the above is allowed to make searches more  complex.
-
-                #### Limits and filters
-                  - Documents returned can be limited by specifying a limit and offset. For e.g, `limit=100&offset=10` gives 100 documents from the 10th search result.
-                  - A subset of properties of returned documents can be filtered out. For e.g, `filter=[id]` returns documents with only the `id` property retained in them.
-            x-codeSamples:
-                -
-                    lang: by type
-                    source: >
-                        https://api.catalogue.iudx.org.in/iudx/cat/v1/count?property=[type]&value=[[iudx:ResourceGroup]]
-                -
-                    lang: by circle
-                    source: >
-                        https://api.catalogue.iudx.org.in/count?geoproperty=location&georel=within&maxDistance=5000&geometry=Point&coordinates=[73.927285,18.502712]
-                -
-                    lang: by text
-                    source: |
-                        https://api.catalogue.iudx.org.in/count?q=aqm
-                -
-                    lang: complex
-                    source: >
-                        https://api.catalogue.iudx.org.in/iudx/cat/v1/count?property=[type]&value=[[iudx:Resource]]&geoproperty=location&georel=within&maxDistance=5000&geometry=Point&coordinates=[73.927285,18.502712]
-    '/iudx/cat/v1/list/{type}':
-        description: |
-            List entities of a certain type or list all possible values of a property(tags only). 
-            If entites, then type must be `resource`, `resourceGroup`, `resourceServer`, `provider`.
-            If properties then only `tags` is supported.
-        get:
-            tags:
-                - List
-            responses:
-                '200':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardResponseWithStrings'
-                    description: Success
-                '400':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardErrorResponse'
-                    description: Fail
-            operationId: listTypes
-            description: List a particular type
-            x-codeSamples:
-                -
-                    lang: by tags
-                    source: |
-                        https://api.catalogue.iudx.org.in/iudx/cat/v1/list/tags
-                -
-                    lang: by resourceGroup
-                    source: |
-                        https://api.catalogue.iudx.org.in/iudx/cat/v1/list/resourceGroup
-                -
-                    lang: by provider
-                    source: |
-                        https://api.catalogue.iudx.org.in/iudx/cat/v1/list/provider
-        parameters:
-            -
-                name: type
-                description: >-
-                    If entites, then type must be resource, resourceGroup, resourceServer, provider. If
-                    properties then only tags is supported.
-                schema:
-                    type: string
-                in: path
-                required: true
-            -
-                name: instance
-                description: IUDX instance on which this query is to be made.
-                schema:
-                    type: string
-                in: header
-                required: false
     /iudx/cat/v1/item:
         description: >
             Operations on a specific catalogue entity. This endpoint is used to create/update/read/delete a
-            catalogue IUDX Entity.
+            catalogue DX Entity.
         get:
             tags:
                 - Entity
             parameters:
                 -
                     name: id
-                    description: ID of the IUDX Entity
+                    description: ID of the DX Entity
                     schema:
                         type: string
                     in: query
@@ -440,7 +254,7 @@ paths:
                                 $ref: '#/components/schemas/notFoundResponse'
                     description: Didn't find the item.
             operationId: getItem
-            description: Get an item
+            description: Retrieve a catalogue item by specifying the id for the item.
             x-codeSamples:
                 -
                     lang: item by id
@@ -457,17 +271,8 @@ paths:
                 - Entity
             parameters:
                 -
-                    name: instance
-                    description: >-
-                        IUDX instance specific to this item. If instance is not mentioned, then the default
-                        instance is applied.
-                    schema:
-                        type: string
-                    in: header
-                    required: false
-                -
                     name: token
-                    description: IUDX Auth token to process the request
+                    description: DX Auth token to process the request
                     schema:
                         type: string
                     in: header
@@ -498,7 +303,10 @@ paths:
                                 $ref: '#/components/schemas/notFoundResponse'
                     description: Document doesn't exist
             operationId: updateItem
-            description: Update an item where the body contains a fully valid item with id
+            description: >-
+                Update an already existing catalogue item. The request body should contain the full item along
+                with the existing 'id'. The contents for the catalogue item with the input 'id' will be
+                overwritten with the request body contents.
             x-codeSamples:
                 -
                     lang: update item
@@ -525,7 +333,7 @@ paths:
             parameters:
                 -
                     name: token
-                    description: IUDX Auth token to process the request
+                    description: DX Auth token to process the request
                     schema:
                         type: string
                     in: header
@@ -550,7 +358,11 @@ paths:
                                 $ref: '#/components/schemas/responseForAuthFailure'
                     description: Unauthorized access
             operationId: createItem
-            description: Insert an item into the catalogue where the item's body specifies the type of item
+            description: >-
+                Create a new catalogue item where the request body constitutes the contents of the catalogue
+                item. The 'type' attribute in the request body specifies the type of caalogue item. All the
+                properties for a given item type, as specified by the catalogue service implementation, should
+                be provided in the request body. 
             x-codeSamples:
                 -
                     lang: create item
@@ -571,14 +383,14 @@ paths:
             parameters:
                 -
                     name: id
-                    description: ID of the IUDX Entity
+                    description: ID of the DX Entity
                     schema:
                         type: string
                     in: query
                     required: true
                 -
                     name: token
-                    description: IUDX Auth token to process the request
+                    description: DX Auth token to process the request
                     schema:
                         type: string
                     in: header
@@ -603,7 +415,7 @@ paths:
                                 $ref: '#/components/schemas/notFoundResponse'
                     description: Didn't find the item
             operationId: deleteItem
-            description: Delete an item
+            description: Delete a catalogue item with a given 'id'.
             x-codeSamples:
                 -
                     lang: delete item
@@ -612,81 +424,10 @@ paths:
                         Host: api.catalogue.iudx.org.in
                         Content-Type: application/json
                         token: <iudx-token>
-    /iudx/cat/v1/relsearch:
-        description: >-
-            Catalogue relationship search. This is much like normal search except the query explores
-            properties that resides inside a related entity.
-
-            For e.g, for  a Resource entity -> Doc A - {id: some-id, provider: example-provider-id}, and
-            Provider entity -> Doc B- {id: example-provider-id, name: some-name},
-
-            this api allows you to make a query saying provider.name=some-name which will return Doc A.
-        get:
-            tags:
-                - Relationship
-            parameters:
-                -
-                    name: relationship
-                    description: |
-                        Relationship attribute on which the query is to be made. For
-                        e.g, entities whose related provider entity's name needs to match xyz will
-                        have this field as "[provider.name]". The relationship is enclosed in [].
-                        If there are two relationships, then they must be comma separated. For e.g,
-                        [provider.name, resourceGroup.name].
-                    schema:
-                        type: array
-                        items:
-                            type: string
-                    in: query
-                    required: false
-                -
-                    name: value
-                    description: >-
-                        Value of the relationhsip. Multiple values for a single relationship are supported,
-                        for e.g, [[val1, val2]].
-
-                        If multiple relationships are specified, then their values will occur as so -
-                        [[rel1-val1],[rel2-val1]]
-                    schema:
-                        type: array
-                        items:
-                            type: string
-                    in: query
-                    required: false
-                -
-                    name: instance
-                    description: IUDX instance on which this query is to be made.
-                    schema:
-                        type: string
-                    in: header
-                    required: false
-            responses:
-                '200':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardResponseWithObjects'
-                    description: All the query parameters yielded results.
-                '400':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardErrorResponse'
-                    description: Bad query.
-            operationId: relationshipSearch
-            description: 'Search related items in the catalogue '
-            x-codeSamples:
-                -
-                    lang: search inside relationship
-                    source: >
-                        https://api.catalogue.iudx.org.in/relsearch?relationship="[provider.name]"&value="[[IUDXAdmin]]"
     /iudx/cat/v1/relationship:
         description: >-
-            Relationship api. This api will give you the document which is pointed by a cerain relationship
-            attribute in an entity.
-
-            For e.g, for Resource.provider, this api will give the Provider entity associated with this
-            Resource.
+            Relationship apis view all entities in the Catalogue as nodes of a graph and offer some "graph"
+            like search capabilities on them.
         get:
             tags:
                 - Relationship
@@ -704,7 +445,82 @@ paths:
                                 $ref: '#/components/schemas/standardResponseWithObjects'
                     description: Item oor relationship doesn't exist
             operationId: getRelatedEntity
-            description: Get the related entity
+            description: >-
+                This API allows one to retrieve documents which are connected by certain relationship
+                attribute in an entity. It allows one to fetch an entity/entities that are immediate
+                neighbor(s) of the input entity.
+
+                To explain this API better we provide an illustrative catalogue graph connecting different
+                catalogue entities below: 
+
+                ```
+                                          forward relationship
+                                       ───────────────────►
+
+                                                                         ┌─────────────────┐
+                ┌───────────────┐                              provider  │                 │
+
+                │               │ resourceGroup                    ┌─────►Provider PA      │
+
+                │ Resource A    ├─────┐                            │     │                 │
+
+                │               │     │    ┌─────────────────┐     │     └─────────────────┘
+
+                └───────────────┘     │    │ ResourceGroup   ├─────┘
+                                      └────► RG1             │
+                ┌───────────────┐          │                 │
+
+                │               │      ┌───►                 ├─────┐    ┌─────────────────┐
+
+                │ Resource B    │      │   └─────────────────┘     │    │                 │
+
+                │               ├──────┘                           │    │ResourceServer RS│
+
+                └───────────────┘  resourceGroup                   └────►                 │
+                                                                        └─────────────────┘
+                                                           resourceServer
+
+
+
+                                       ◄────────────────────
+                                           inverse relationship
+                ```   
+
+                Given a resource item, say Resource A, one may want to retrieve the resource group item
+                associated with it. Similarly, given a resource group item, say RG1, one may want to retrieve
+                all resource entities that belong to this resource group. In the above example, the API should
+                return resource entities A and B.
+
+                The following table shows applicable queries for different entities.
+
+                ``` 
+
+                | Type of the entity (id) | Supported relationships for "rel"       |
+                Description                                             |
+
+                |-------------------------|-----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+
+                | Resource                | resourceGroup,resourceServer,  provider | Return the associated
+                resourceGroup (or resourceServer or provider) entity. Only single entity is
+                returned.              |
+
+                | ResourceGroup           | resource                                | Return all resource
+                items associated with the input resource group. Multiple entities may be
+                returned.                       |
+
+                | ResourceGroup           | resourceServer, provider                | Return the associated
+                resourceServer (or provider) entity. Only single entity is
+                returned.                               |
+
+                | Provider                | resource, resourceGroup                 | Return all resource or
+                resource group items associated with the input provider. Multiple entities maybe
+                returned.                  |
+
+                | ResourceServer          | resource, resourceGroup                 | Return all resource or
+                resource group items associated with the input resource server. Multiple entities maybe
+                returned.           |
+
+                ```
             x-codeSamples:
                 -
                     lang: search by relationship
@@ -722,101 +538,56 @@ paths:
                 name: rel
                 description: >-
                     Relationship attribute of the entity whose id is provided. For e.g provider,
-                    resourceGroup, resourceServer or instance.
+                    resourceGroup, resourceServer.
                 schema:
                     type: string
                 in: query
                 required: true
-            -
-                name: instance
-                description: IUDX instance on which this query is to be made.
-                schema:
-                    type: string
-                in: header
-                required: false
-    /iudx/cat/v1/instance:
-        description: >-
-            A catalogue administrator api to set an instance (grouping) which will be reflected on the
-            catalogue ui.
-        post:
+    '/iudx/cat/v1/list/{type}':
+        description: |
+            List all catalogue items of input item type. Currently, listing of all items 
+            with the following types is supported: 'resourceGroup', 'resourceServer' and 'provider'.
+        get:
             tags:
-                - Administrator
-            parameters:
-                -
-                    name: id
-                    description: |
-                        id of the instance. In most cases this is a city name.
-                    schema:
-                        type: string
-                    in: query
-                    required: true
-                -
-                    name: token
-                    description: IUDX Auth token to process the request
-                    schema:
-                        type: string
-                    in: header
-                    required: true
+                - List
             responses:
-                '201':
+                '200':
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
-                    description: Successfully inserted
+                                $ref: '#/components/schemas/standardResponseWithStrings'
+                    description: Success
                 '400':
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/responseForValidationFailure'
-                    description: Invalid document
-                '401':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/responseForAuthFailure'
-                    description: Unauthorized access
-            operationId: createInstance
-            description: Create an IUDX instance
-        delete:
-            tags:
-                - Administrator
-            parameters:
+                                $ref: '#/components/schemas/standardErrorResponse'
+                    description: Fail
+            operationId: listTypes
+            description: >
+                List all catalogue items of input item type. Currently, listing of all items  with the
+                following types is supported: 'resourceGroup', 'resourceServer' and 'provider'.
+            x-codeSamples:
                 -
-                    name: id
-                    description: |
-                        id of the instance. In most cases this is a city name.
-                    schema:
-                        type: string
-                    in: query
-                    required: true
+                    lang: by tags
+                    source: |
+                        https://api.catalogue.iudx.org.in/iudx/cat/v1/list/tags
                 -
-                    name: token
-                    description: IUDX Auth token to process the request
-                    schema:
-                        type: string
-                    in: header
-                    required: true
-            responses:
-                '204':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
-                    description: Successfully deleted
-                '401':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
-                    description: Unauthorized access
-                '404':
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/standardCrudResponse'
-                    description: Instance doesn't exist
-            operationId: deleteInstance
+                    lang: by resourceGroup
+                    source: |
+                        https://api.catalogue.iudx.org.in/iudx/cat/v1/list/resourceGroup
+                -
+                    lang: by provider
+                    source: |
+                        https://api.catalogue.iudx.org.in/iudx/cat/v1/list/provider
+        parameters:
+            -
+                name: type
+                description: 'Type must be resourceGroup, resourceServer, provider.'
+                schema:
+                    type: string
+                in: path
+                required: true
 components:
     schemas:
         standardResponseWithObjects:
@@ -1059,32 +830,25 @@ tags:
     -
         name: Entity
         description: |
-            Manage catalogue entities and perform Create/Update/Read/Delete operations on them.
-            These apis are intended to be used by IUDX Data *Providers*.
+            Manage catalogue entities and perform Create/Update/Read/Delete (CRUD) operations on these.
+            These APIs are intended to be used by DX Data *Providers*.
         x-displayName: Entity
     -
         name: Discovery
-        description: >
-            Discovery IUDX Entities using a rich discovery api supporting property, text and geo-based
-            queries.
-
-            These apis are intended to be used by IUDX Data *Consumers*.
+        description: |
+            Discovery DX Entities using a rich discovery api supporting property, text and geo-based queries.
+            These APIs are intended to be used by DX Data *Consumers*.
         x-displayName: Discovery
     -
         name: List
         description: |
-            List IUDX Entities of a certain type.
-            These apis are intended to be used by User Interfaces.
+            List DX Entities of a certain type.
+            These APIs are intended to be used by DX Data *Consumers*.
         x-displayName: List
     -
         name: Relationship
         description: |
             Discovery of entities through their relationships.
-            These apis are intended to be used by IUDX Data *Consumers*.
+            These APIs are intended to be used by DX Data *Consumers*.
         x-displayName: Relationship
-    -
-        name: Administrator
-        description: |
-            Catalogue administrator specific apis.
-        x-displayName: Administrator
 
