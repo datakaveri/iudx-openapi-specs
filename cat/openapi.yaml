@@ -396,7 +396,7 @@ paths:
                     in: header
                     required: true
             responses:
-                '204':
+                '200':
                     content:
                         application/json:
                             schema:
